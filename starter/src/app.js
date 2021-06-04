@@ -21,12 +21,13 @@ const apiOptions = {
   version: "beta",
   map_ids: [process.env.GoogleMapsMapId],
 };
+const rotationIsOn = false;
 
 const mapOptions = {
   tilt: 0,
   heading: 0,
   zoom: 18,
-  center: { lat: 35.6594945, lng: 139.6999859 },
+  center: { lat: -36.920534, lng: 174.787329 },
   mapId: process.env.GoogleMapsMapId,
 };
 
@@ -34,7 +35,16 @@ async function initMap() {
   const mapDiv = document.getElementById("map");
   const apiLoader = new Loader(apiOptions);
   await apiLoader.load();
-  return new google.maps.Map(mapDiv, mapOptions);
+
+  const map = new google.maps.Map(mapDiv, mapOptions);
+
+  google.maps.event.addListener(map, "zoom_changed", (e) => {
+    let zoomLevel = map.getZoom();
+    if (zoomLevel > 4 && zoomLevel < 20) {
+      mapOptions.zoom = zoomLevel;
+    }
+  });
+  return map;
 }
 
 function initWebglOverlayView(map) {
@@ -47,15 +57,35 @@ function initWebglOverlayView(map) {
     camera = new THREE.PerspectiveCamera();
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
     scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.25);
+    const directionalLight = new THREE.DirectionalLight(0xffafaf, 0.25);
     directionalLight.position.set(0.5, -1, 0.5);
     scene.add(directionalLight);
 
     // load the model
     loader = new GLTFLoader();
-    const source = "pin.gltf";
+    const shader = "shader.gltf";
+    loader.load(shader, (gltf) => {
+      gltf.scene.scale.set(5, 5, 5);
+      gltf.scene.rotation.x = (270 * Math.PI) / 270;
+      const s2 = gltf.scene.clone();
+      gltf.scene.position.set(20, 0, -100);
+      s2.position.set(-20, 0, -100);
+      scene.add(s2);
+      scene.add(gltf.scene);
+    });
+    const particle = "particle.gltf";
+    loader.load(particle, (gltf) => {
+      gltf.scene.rotation.x = 0.5 * Math.PI;
+      // gltf.scene.rotation.y = (90 * Math.PI) / 90;
+      // gltf.scene.rotation.z = (45 * Math.PI) / 45;
+      gltf.scene.position.set(0, 0, -151);
+      gltf.scene.scale.set(3, 3, 3);
+      scene.add(gltf.scene);
+    });
+    const source = "wooden-crate.glb";
     loader.load(source, (gltf) => {
-      gltf.scene.scale.set(25, 25, 25);
+      gltf.scene.position.set(0, 0, -100);
+      gltf.scene.scale.set(12, 12, 12);
       gltf.scene.rotation.x = (180 * Math.PI) / 180;
       scene.add(gltf.scene);
     });
@@ -79,9 +109,9 @@ function initWebglOverlayView(map) {
         });
         if (mapOptions.tilt < 67.5) {
           mapOptions.tilt += 0.5;
-        } else if (mapOptions.heading <= 360) {
+        } else if (rotationIsOn && mapOptions.heading <= 360) {
           mapOptions.heading += 0.2;
-        } else {
+        } else if (rotationIsOn) {
           renderer.setAnimationLoop(null);
         }
       });
